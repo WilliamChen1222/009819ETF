@@ -9,19 +9,19 @@ st.set_page_config(page_title="009819 深度觀測站", layout="wide")
 st.title("⚡ 009819 中信美國數據中心及電力 ETF 觀測站")
 st.markdown("專注追蹤 AI 基礎建設與底層能源板塊的核心動能")
 
-# 2. 定義標的與近似權重 (擴充至 10 大成分股)
+# 2. 定義標的與近似權重 (加入正式中文公司名稱)
 etf_ticker = "009819.TW"
 components = {
-    "AVGO": {"name": "Broadcom (網通/AI晶片)", "weight": 25.4},
-    "ETN": {"name": "Eaton (電力管理)", "weight": 9.2},
-    "ORCL": {"name": "Oracle (雲端基建)", "weight": 8.5},
-    "NEE": {"name": "NextEra Energy (綠能發電)", "weight": 4.1},
-    "NOW": {"name": "ServiceNow (IT自動化)", "weight": 3.8},
-    "EQIX": {"name": "Equinix (數據中心REITs)", "weight": 3.5},
-    "SO": {"name": "Southern Co. (電力供應)", "weight": 3.4},
-    "DUK": {"name": "Duke Energy (電力供應)", "weight": 3.2},
-    "DLR": {"name": "Digital Realty (數據中心)", "weight": 3.1},
-    "VRT": {"name": "Vertiv (散熱/液冷)", "weight": 2.8}
+    "AVGO": {"name": "博通", "weight": 25.4},
+    "ETN": {"name": "伊頓", "weight": 9.2},
+    "ORCL": {"name": "甲骨文", "weight": 8.5},
+    "NEE": {"name": "新紀元能源", "weight": 4.1},
+    "NOW": {"name": "ServiceNow", "weight": 3.8},
+    "EQIX": {"name": "Equinix", "weight": 3.5}, # 易昆尼克斯 (通常業界稱英文)
+    "SO": {"name": "南方公司", "weight": 3.4},
+    "DUK": {"name": "杜克能源", "weight": 3.2},
+    "DLR": {"name": "數位地產", "weight": 3.1},
+    "VRT": {"name": "維諦技術", "weight": 2.8}
 }
 
 # 3. 獲取市場數據 (快取 15 分鐘)
@@ -61,7 +61,7 @@ try:
     col_pie, col_metrics = st.columns([1.5, 2])
     
     with col_pie:
-        # 繪製成分股權重圓餅圖
+        # 繪製成分股權重圓餅圖 (名稱會直接顯示中文)
         df_weights = pd.DataFrame([{"代碼": k, "名稱": v["name"], "權重": v["weight"]} for k, v in components.items()])
         fig_pie = px.pie(df_weights, values='權重', names='名稱', 
                          title="主力成分股權重分佈 (前十大)", hole=0.4)
@@ -69,7 +69,6 @@ try:
         st.plotly_chart(fig_pie, use_container_width=True)
 
     with col_metrics:
-        # 正確的位置：在這裡顯示 10 大成分股報價
         st.write("**前十大成分股即時走勢 (美股)**")
         m_cols1 = st.columns(5)  # 第一排 5 個
         m_cols2 = st.columns(5)  # 第二排 5 個
@@ -79,13 +78,17 @@ try:
             current_p = latest_prices[ticker]
             prev_p = prev_prices[ticker]
             change = ((current_p / prev_p) - 1) * 100
-            m_cols_list[idx].metric(ticker, f"${current_p:.2f}", f"{change:.2f}%")
+            
+            # 將代碼與中文名稱組合在一起顯示
+            display_label = f"{ticker} ({components[ticker]['name']})"
+            
+            m_cols_list[idx].metric(display_label, f"${current_p:.2f}", f"{change:.2f}%")
 
     st.divider()
 
     # --- 區塊 C：走勢聯動比較 (穿透分析) ---
     st.header("3. 走勢聯動比較 (近三個月)")
-    st.markdown("觀察 009819 是否緊跟其最大權重股（如 AVGO）或特定板塊（如電力基建）的趨勢。")
+    st.markdown("觀察 009819 是否緊跟其最大權重股（如 AVGO 博通）或特定板塊（如電力基建）的趨勢。")
     
     # 計算累積報酬率 (以第一天為基準 0%)
     df_returns = (df_prices / df_prices.iloc[0] - 1) * 100
@@ -96,10 +99,11 @@ try:
     fig_line.add_trace(go.Scatter(x=df_returns.index, y=df_returns[etf_ticker], 
                                   name="009819.TW", line=dict(color='red', width=4)))
     
-    # 加入其他成分股
+    # 加入其他成分股 (折線圖也顯示中文)
     for ticker in components.keys():
+        line_name = f"{ticker} {components[ticker]['name']}"
         fig_line.add_trace(go.Scatter(x=df_returns.index, y=df_returns[ticker], 
-                                      name=components[ticker]["name"], opacity=0.7))
+                                      name=line_name, opacity=0.7))
         
     fig_line.update_layout(
         title="009819 與核心成分股累積報酬率 (%)",
