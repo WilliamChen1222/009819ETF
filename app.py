@@ -9,9 +9,8 @@ st.set_page_config(page_title="009819 深度觀測站", layout="wide")
 st.title("⚡ 009819 中信美國數據中心及電力 ETF 觀測站")
 st.markdown("專注追蹤 AI 基礎建設與底層能源板塊的核心動能")
 
-# 2. 定義標的與近似權重 (根據公開資料的佔比設定，可隨時微調)
+# 2. 定義標的與近似權重 (擴充至 10 大成分股)
 etf_ticker = "009819.TW"
-# 更新後的 009819 前十大成分股定義 (權重會隨市價浮動，此為近期參考值)
 components = {
     "AVGO": {"name": "Broadcom (網通/AI晶片)", "weight": 25.4},
     "ETN": {"name": "Eaton (電力管理)", "weight": 9.2},
@@ -25,19 +24,6 @@ components = {
     "VRT": {"name": "Vertiv (散熱/液冷)", "weight": 2.8}
 }
 
-# 修改儀表板顯示邏輯，讓排版適應 10 個指標
-# 在「成分股最新報價」區塊，將列數改為兩排各 5 個
-with col_metrics:
-    st.write("**前十大成分股即時走勢 (美股)**")
-    m_cols1 = st.columns(5)  # 第一排 5 個
-    m_cols2 = st.columns(5)  # 第二排 5 個
-    
-    m_cols_list = m_cols1 + m_cols2
-    for idx, ticker in enumerate(components.keys()):
-        current_p = latest_prices[ticker]
-        prev_p = prev_prices[ticker]
-        change = ((current_p / prev_p) - 1) * 100
-        m_cols_list[idx].metric(ticker, f"${current_p:.2f}", f"{change:.2f}%")
 # 3. 獲取市場數據 (快取 15 分鐘)
 @st.cache_data(ttl=900)
 def fetch_data(tickers, period="3mo"):
@@ -78,15 +64,15 @@ try:
         # 繪製成分股權重圓餅圖
         df_weights = pd.DataFrame([{"代碼": k, "名稱": v["name"], "權重": v["weight"]} for k, v in components.items()])
         fig_pie = px.pie(df_weights, values='權重', names='名稱', 
-                         title="主力成分股權重分佈 (前段班)", hole=0.4)
+                         title="主力成分股權重分佈 (前十大)", hole=0.4)
         fig_pie.update_traces(textposition='inside', textinfo='percent+label')
         st.plotly_chart(fig_pie, use_container_width=True)
 
     with col_metrics:
-        st.write("**核心成分股最新報價與漲跌幅 (美股)**")
-        # 將成分股分為兩排顯示，比較美觀
-        m_cols1 = st.columns(4)
-        m_cols2 = st.columns(4)
+        # 正確的位置：在這裡顯示 10 大成分股報價
+        st.write("**前十大成分股即時走勢 (美股)**")
+        m_cols1 = st.columns(5)  # 第一排 5 個
+        m_cols2 = st.columns(5)  # 第二排 5 個
         
         m_cols_list = m_cols1 + m_cols2
         for idx, ticker in enumerate(components.keys()):
