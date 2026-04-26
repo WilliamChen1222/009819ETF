@@ -9,20 +9,30 @@ st.set_page_config(page_title="009819 深度觀測站", layout="wide")
 st.title("⚡ 009819 中信美國數據中心及電力 ETF 觀測站")
 st.markdown("專注追蹤 AI 基礎建設與底層能源板塊的核心動能")
 
-# 2. 定義標的與近似權重 (加入正式中文公司名稱)
+# 2. 定義標的與近似權重 (全中文名稱更新版，前十大)
 etf_ticker = "009819.TW"
 components = {
     "AVGO": {"name": "博通", "weight": 25.4},
     "ETN": {"name": "伊頓", "weight": 9.2},
     "ORCL": {"name": "甲骨文", "weight": 8.5},
     "NEE": {"name": "新紀元能源", "weight": 4.1},
-    "NOW": {"name": "ServiceNow", "weight": 3.8},
-    "EQIX": {"name": "Equinix", "weight": 3.5}, # 易昆尼克斯 (通常業界稱英文)
+    "NOW": {"name": "塞維斯諾", "weight": 3.8},       
+    "EQIX": {"name": "易昆尼克斯", "weight": 3.5},     
     "SO": {"name": "南方公司", "weight": 3.4},
     "DUK": {"name": "杜克能源", "weight": 3.2},
     "DLR": {"name": "數位地產", "weight": 3.1},
     "VRT": {"name": "維諦技術", "weight": 2.8}
 }
+
+# 技術指標計算函數 (RSI)
+def calculate_rsi(series, period=14):
+    delta = series.diff(1)
+    gain = delta.where(delta > 0, 0)
+    loss = -delta.where(delta < 0, 0)
+    avg_gain = gain.ewm(alpha=1/period, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1/period, adjust=False).mean()
+    rs = avg_gain / avg_loss
+    return 100 - (100 / (1 + rs))
 
 # 3. 獲取市場數據 (快取 15 分鐘)
 @st.cache_data(ttl=900)
@@ -79,9 +89,8 @@ try:
             prev_p = prev_prices[ticker]
             change = ((current_p / prev_p) - 1) * 100
             
-            # 將代碼與中文名稱組合在一起顯示
+            # 將代碼與純中文名稱組合在一起顯示
             display_label = f"{ticker} ({components[ticker]['name']})"
-            
             m_cols_list[idx].metric(display_label, f"${current_p:.2f}", f"{change:.2f}%")
 
     st.divider()
@@ -113,6 +122,59 @@ try:
         height=500
     )
     st.plotly_chart(fig_line, use_container_width=True)
+
+    st.divider()
+
+    # --- 區塊 D：出場策略與賣出訊號分析 ---
+    st.header("4. 🚨 出場策略與賣出訊號分析")
+    st.markdown("結合技術指標與成分股動能，輔助判斷是否應逢高減碼。")
+
+    # 計算 009819 與最大權重股 (AVGO) 的技術指標 (近 20 日移動平均)
+    df_prices['009819_20MA'] = df_prices[etf_ticker].rolling(window=20).mean()
+    df_prices['009819_RSI'] = calculate_rsi(df_prices[etf_ticker])
+    
+    df_prices['AVGO_20MA'] = df_prices['AVGO'].rolling(window=20).mean()
+    df_prices['AVGO_RSI'] = calculate_rsi(df_prices['AVGO'])
+
+    # 取得最新一天的指標數值
+    latest_009819_rsi = df_prices['009819_RSI'].iloc[-1]
+    latest_009819_ma = df_prices['009819_20MA'].iloc[-1]
+    latest_avgo_rsi = df_prices['AVGO_RSI'].iloc[-1]
+    
+    col_sig1, col_sig2, col_sig3 = st.columns(3)
+
+    # 訊號 1：009819 RSI 超買警告
+    with col_sig1:
+        st.subheader("指標 1：市場過熱度 (RSI)")
+        st.metric("009819 目前 RSI (14日)", f"{latest_009819_rsi:.1f}")
+        if latest_009819_rsi >= 75:
+            st.error("⚠️ 強烈賣出訊號：RSI 超過 75，市場極度貪婪，隨時可能大幅回檔，建議獲利了結或減碼。")
+        elif latest_009819_rsi >= 70:
+            st.warning("⚠️ 警戒訊號：RSI 超過 70，進入超買區，請密切關注折溢價風險。")
+        elif latest_009819_rsi <= 30:
+            st.success("🟢 超賣區：RSI 低於 30，市場恐慌，可能為逢低佈局時機。")
+        else:
+            st.info("穩定區間：數值處於中性水平 (30-70)，無過熱跡象。")
+
+    # 訊號 2：009819 趨勢破線警告
+    with col_sig2:
+        st.subheader("指標 2：短期趨勢 (20MA)")
+        st.metric("009819 價格 vs 月線", f"市價: {etf_current:.2f} / 月線: {latest_009819_ma:.2f}")
+        if etf_current < latest_009819_ma:
+            st.error("⚠️ 跌破趨勢：市價已跌破 20 日月線，短期動能轉弱，需防範資金撤出風險。")
+        else:
+            st.success("🟢 趨勢健康：市價維持在 20 日月線之上，多頭格局延續。")
+
+    # 訊號 3：老大哥動能警告 (博通 AVGO)
+    with col_sig3:
+        st.subheader("指標 3：最大權重股 (博通)")
+        st.metric("博通 (AVGO) 目前 RSI", f"{latest_avgo_rsi:.1f}")
+        if latest_avgo_rsi >= 70:
+            st.warning("⚠️ 老大哥過熱：佔比近 25% 的博通已進入超買區，若其股價回檔，將直接重挫 009819 淨值。")
+        elif df_prices['AVGO'].iloc[-1] < df_prices['AVGO_20MA'].iloc[-1]:
+            st.error("⚠️ 底層動能流失：博通已跌破月線，ETF 缺乏領頭羊上漲動能。")
+        else:
+            st.info("老大哥穩健：最大成分股目前技術面健康，持續提供支撐。")
 
 except Exception as e:
     st.error("獲取資料失敗，請確認網路連線或 Yahoo Finance 服務是否正常。")
