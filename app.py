@@ -11,17 +11,33 @@ st.markdown("專注追蹤 AI 基礎建設與底層能源板塊的核心動能")
 
 # 2. 定義標的與近似權重 (根據公開資料的佔比設定，可隨時微調)
 etf_ticker = "009819.TW"
+# 更新後的 009819 前十大成分股定義 (權重會隨市價浮動，此為近期參考值)
 components = {
-    "AVGO": {"name": "Broadcom (網通晶片)", "weight": 29.0},
-    "ETN": {"name": "Eaton (電力管理)", "weight": 9.1},
-    "ORCL": {"name": "Oracle (雲端基建)", "weight": 8.0},
-    "NOW": {"name": "ServiceNow (IT工作流)", "weight": 3.9},
-    "SO": {"name": "Southern Co. (傳統電力)", "weight": 3.7},
-    "DUK": {"name": "Duke Energy (傳統電力)", "weight": 3.5},
-    "EQIX": {"name": "Equinix (數據中心REITs)", "weight": 3.3},
-    "VRT": {"name": "Vertiv (散熱液冷)", "weight": 2.0} # 示意權重
+    "AVGO": {"name": "Broadcom (網通/AI晶片)", "weight": 25.4},
+    "ETN": {"name": "Eaton (電力管理)", "weight": 9.2},
+    "ORCL": {"name": "Oracle (雲端基建)", "weight": 8.5},
+    "NEE": {"name": "NextEra Energy (綠能發電)", "weight": 4.1},
+    "NOW": {"name": "ServiceNow (IT自動化)", "weight": 3.8},
+    "EQIX": {"name": "Equinix (數據中心REITs)", "weight": 3.5},
+    "SO": {"name": "Southern Co. (電力供應)", "weight": 3.4},
+    "DUK": {"name": "Duke Energy (電力供應)", "weight": 3.2},
+    "DLR": {"name": "Digital Realty (數據中心)", "weight": 3.1},
+    "VRT": {"name": "Vertiv (散熱/液冷)", "weight": 2.8}
 }
 
+# 修改儀表板顯示邏輯，讓排版適應 10 個指標
+# 在「成分股最新報價」區塊，將列數改為兩排各 5 個
+with col_metrics:
+    st.write("**前十大成分股即時走勢 (美股)**")
+    m_cols1 = st.columns(5)  # 第一排 5 個
+    m_cols2 = st.columns(5)  # 第二排 5 個
+    
+    m_cols_list = m_cols1 + m_cols2
+    for idx, ticker in enumerate(components.keys()):
+        current_p = latest_prices[ticker]
+        prev_p = prev_prices[ticker]
+        change = ((current_p / prev_p) - 1) * 100
+        m_cols_list[idx].metric(ticker, f"${current_p:.2f}", f"{change:.2f}%")
 # 3. 獲取市場數據 (快取 15 分鐘)
 @st.cache_data(ttl=900)
 def fetch_data(tickers, period="3mo"):
